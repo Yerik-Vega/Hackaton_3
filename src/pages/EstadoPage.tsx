@@ -1,7 +1,100 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
 import { errorMessage, request } from "../lib/api";
 import { BUILD } from "../lib/config";
 import type { ClearanceCheckResult, DeployChallenge, IntegrationStatus } from "../lib/types";
+
+interface RosterMember {
+  name: string;
+  code: string;
+}
+interface Roster {
+  members: RosterMember[];
+  complete: boolean;
+  locked: boolean;
+}
+
+// Integrantes del equipo (los mismos de hackathon.json)
+const DEFAULT_ROSTER: RosterMember[] = [
+  { name: "Treicy Calsina", code: "202520007" },
+  { name: "Mathias Alonso", code: "202210384" },
+  { name: "Yerik Vega", code: "202520144" },
+];
+
+// Inscribir a los 3 integrantes para los sorteos de las rondas (PUT /team/roster)
+function RosterSection() {
+  const { can } = useAuth();
+  const [roster, setRoster] = useState<Roster | null>(null);
+  const [members, setMembers] = useState<RosterMember[]>(DEFAULT_ROSTER);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    request<Roster>("/team/roster")
+      .then((r) => {
+        setRoster(r);
+        if (r.members.length === 3) setMembers(r.members);
+      })
+      .catch((err) => setMsg(errorMessage(err)));
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setMsg(null);
+    try {
+      setRoster(await request<Roster>("/team/roster", { method: "PUT", body: { members } }));
+      setMsg("Roster guardado ✔");
+    } catch (err) {
+      setMsg(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const update = (i: number, field: keyof RosterMember, value: string) =>
+    setMembers(members.map((m, j) => (j === i ? { ...m, [field]: value } : m)));
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-semibold">Integrantes (roster)</h2>
+      {roster && (
+        <p className="text-sm">
+          {roster.complete ? "Roster completo ✔" : "Roster incompleto ✖"} {roster.locked && "· bloqueado (ya hubo sorteo)"}
+        </p>
+      )}
+      {members.map((m, i) => (
+        <div key={i} className="flex gap-2">
+          <label className="sr-only" htmlFor={`name-${i}`}>
+            Nombre {i + 1}
+          </label>
+          <input
+            id={`name-${i}`}
+            value={m.name}
+            onChange={(e) => update(i, "name", e.target.value)}
+            className="flex-1 px-3 py-1 rounded bg-slate-800 border border-slate-600"
+          />
+          <label className="sr-only" htmlFor={`code-${i}`}>
+            Código {i + 1}
+          </label>
+          <input
+            id={`code-${i}`}
+            value={m.code}
+            onChange={(e) => update(i, "code", e.target.value)}
+            className="w-36 px-3 py-1 rounded bg-slate-800 border border-slate-600"
+          />
+        </div>
+      ))}
+      <button
+        onClick={save}
+        disabled={saving || !can("team:manage") || roster?.locked}
+        className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
+      >
+        {saving ? "Guardando…" : "Guardar roster"}
+      </button>
+      {msg && <p className="text-sm">{msg}</p>}
+    </section>
+  );
+}
 
 // /estado: build desplegado, salud de la API, integraciones, clearance
 // y el botón que corre la revisión automática (POST /clearance/check).
@@ -111,6 +204,8 @@ export default function EstadoPage() {
           </ul>
         )}
       </section>
+
+      <RosterSection />
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Verificar dominio</h2>
