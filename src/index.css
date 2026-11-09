@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
-/* Celdas que dan miedo: tiemblan según --amp (derivado de tremor) */
-@keyframes tremble {
-  0%   { transform: translate(0, 0); }
-  25%  { transform: translate(var(--amp), calc(var(--amp) * -1)); }
-  50%  { transform: translate(calc(var(--amp) * -1), var(--amp)); }
-  75%  { transform: translate(var(--amp), var(--amp)); }
-  100% { transform: translate(0, 0); }
-}
-.cell-scary {
-  --amp: 2px;
-  --dur: 180ms;
-  animation: tremble var(--dur) linear infinite;
-  background: #fde68a;
+body {
+  @apply bg-slate-950 text-slate-100;
 }
 
-/* Sin movimiento: se distinguen por borde punteado */
+/* Celdas que "dan miedo": tiemblan según su tremor (variable --amp en px) */
+@keyframes tremble {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(var(--amp), 0); }
+  75% { transform: translate(calc(var(--amp) * -1), 0); }
+}
+.scary {
+  animation: tremble 0.25s infinite;
+}
+/* Con reduced motion: sin movimiento, se distinguen por color y subrayado */
 @media (prefers-reduced-motion: reduce) {
-  .cell-scary { animation: none; outline: 2px dashed #b45309; outline-offset: -2px; }
+  .scary {
+    animation: none;
+    text-decoration: underline;
+  }
 }
