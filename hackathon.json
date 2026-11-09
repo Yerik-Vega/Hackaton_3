@@ -4,8 +4,8 @@
   "deployUrl": "https://",
   "storageProvider": "SUPABASE | CLOUDINARY",
   "integrantes": [
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" },
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" },
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" }
+    { "nombre": "Treicy Calsina", "codigo": "202520007" },
+    { "nombre": "Mathias Alonso", "codigo": "202210384" },
+    { "nombre": "Yerik Vega", "codigo": "202520144" }
   ]
 }
