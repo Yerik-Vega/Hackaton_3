@@ -118,6 +118,7 @@ export interface RequestOptions {
   auth?: boolean; // false en login/register/health
   retries?: number; // reintentos ante 503 / red (por defecto 3 en GET, 0 en el resto)
   retryNetworkErrors?: boolean; // false: un corte de red no se reintenta aquí (lo decide quien llama)
+  onHeaders?: (headers: Headers) => void; // para leer cabeceras de la respuesta (p. ej. ETag)
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -150,6 +151,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
 
     if (res.ok) {
+      options.onHeaders?.(res.headers);
       if (res.status === 204) return undefined as T;
       return (await res.json()) as T;
     }

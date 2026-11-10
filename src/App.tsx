@@ -14,6 +14,7 @@ const FilesPage = lazy(() => import("./pages/FilesPage"));
 const RefinePage = lazy(() => import("./pages/RefinePage"));
 const EstadoPage = lazy(() => import("./pages/EstadoPage"));
 const RefinersPage = lazy(() => import("./pages/RefinersPage"));
+const BadgePage = lazy(() => import("./pages/BadgePage"));
 
 export default function App() {
   return (
@@ -48,6 +49,14 @@ export default function App() {
                 element={
                   <RequirePermission permission="refiners:read">
                     <RefinersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/refiners/:id/badge"
+                element={
+                  <RequirePermission permission="media:upload">
+                    <BadgePage />
                   </RequirePermission>
                 }
               />

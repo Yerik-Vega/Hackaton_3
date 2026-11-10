@@ -28,7 +28,9 @@ npm run build          # build de producción (tsc estricto + vite)
 
 ## Storage
 
-Todavía no configurado (CP4 pendiente). Se usaría Cloudinary con un upload preset unsigned limitado a `lumon/TEAM-057/` y solo WebP.
+Supabase Storage: bucket público `lumon-media` (solo `image/webp`, máx. 300 KB) con una política RLS que deja a `anon`
+solo **insertar** dentro de `TEAM-057/` (sin UPDATE ni DELETE). El frontend usa solo la clave **publicable**
+(`VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY`). Se registra y verifica desde `/estado` (`PUT /integrations/storage`).
 
 ---
 

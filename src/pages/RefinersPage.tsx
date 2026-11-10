@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage, request } from "../lib/api";
 
 interface Department {
@@ -177,6 +177,9 @@ export default function RefinersPage() {
                       {refiner.title} · {refiner.department.name} · ext. {refiner.extension}
                     </p>
                     <p className="text-sm text-slate-400 break-words">{refiner.bio}</p>
+                    <Link to={`/refiners/${refiner.id}/badge`} className="text-sm text-teal-300 underline mr-3">
+                      Cambiar fotocheck <span className="sr-only">de {refiner.fullName}</span>
+                    </Link>
                     {profile && (
                       <a href={profile} target="_blank" rel="noopener noreferrer" className="text-sm text-teal-300 underline">
                         Perfil <span className="sr-only">de {refiner.fullName}</span>

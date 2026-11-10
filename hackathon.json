@@ -2,7 +2,7 @@
   "teamCode": "TEAM-057",
   "teamName": "DiezyNueve",
   "deployUrl": "https://hackaton-3-beryl.vercel.app",
-  "storageProvider": "SUPABASE | CLOUDINARY",
+  "storageProvider": "SUPABASE",
   "integrantes": [
     { "nombre": "Treicy Calsina", "codigo": "202520007" },
     { "nombre": "Mathias Alonso", "codigo": "202210384" },

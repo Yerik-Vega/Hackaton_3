@@ -1,7 +1,63 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage, request } from "../lib/api";
-import { BUILD } from "../lib/config";
+import { ApiError } from "../lib/api";
+import { BUILD, SUPABASE_KEY, SUPABASE_URL } from "../lib/config";
+
+interface StorageCheck {
+  name: string;
+  passed: boolean;
+  detail?: string;
+}
+
+// Registrar Supabase en Lumon (PUT /integrations/storage): el backend lo prueba de verdad
+function StorageSection({ onDone }: { onDone: () => void }) {
+  const [checks, setChecks] = useState<StorageCheck[]>([]);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function register() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await request<{ checks: StorageCheck[] }>("/integrations/storage", {
+        method: "PUT",
+        body: { provider: "SUPABASE", projectUrl: SUPABASE_URL, bucket: "lumon-media", publicKey: SUPABASE_KEY },
+      });
+      setChecks(res.checks);
+      setMsg("Storage verificado ✔");
+      onDone();
+    } catch (err) {
+      const details = err instanceof ApiError ? (err.details as { checks?: StorageCheck[] } | null) : null;
+      setChecks(details?.checks ?? []);
+      setMsg(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-semibold">Storage (Supabase)</h2>
+      <p className="text-sm text-slate-300">Proyecto: {SUPABASE_URL || "falta VITE_SUPABASE_URL"}</p>
+      <button
+        onClick={register}
+        disabled={busy || !SUPABASE_URL || !SUPABASE_KEY}
+        className="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
+      >
+        {busy ? "Probando…" : "Registrar y verificar storage"}
+      </button>
+      {msg && <p className="text-sm">{msg}</p>}
+      <ul className="list-disc pl-6 text-sm">
+        {checks.map((c) => (
+          <li key={c.name}>
+            {c.passed ? "✔" : "✖"} {c.name} {c.detail ?? ""}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 import type { ClearanceCheckResult, DeployChallenge, IntegrationStatus } from "../lib/types";
 
 interface RosterMember {
@@ -206,6 +262,7 @@ export default function EstadoPage() {
       </section>
 
       <RosterSection />
+      <StorageSection onDone={loadStatus} />
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Verificar dominio</h2>
