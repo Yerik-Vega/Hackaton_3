@@ -38,7 +38,23 @@ let blockedUntil = 0;
 // Un bloque cancelado en el navegador puede seguir "en vuelo" en el servidor (latencia del caos).
 // Para no tener NUNCA dos requests en vuelo del mismo bloque, no se vuelve a pedir hasta que pase este tiempo.
 const ABORT_COOLDOWN_MS = 5000;
-const recentlyAborted = new Map<string, number>(); // "fileId:tr:tc" -> hora en que se canceló
+// "fileId:tr:tc" -> hora en que se canceló. Se guarda en sessionStorage para que sobreviva a un F5:
+// al recargar, el navegador corta los bloques en vuelo pero el servidor los sigue procesando.
+const STORAGE_KEY = "lumon.abortedTiles";
+function readAborted(): Map<string, number> {
+  try {
+    return new Map(Object.entries(JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "{}") as Record<string, number>));
+  } catch {
+    return new Map(); // dato corrupto: se ignora
+  }
+}
+const recentlyAborted = readAborted();
+const liveStores = new Set<TileStore>();
+window.addEventListener("pagehide", () => {
+  for (const store of liveStores) store.abortAll(); // marca como cancelados los que estaban en vuelo
+  const recent = [...recentlyAborted].filter(([, at]) => Date.now() - at < ABORT_COOLDOWN_MS);
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(recent)));
+});
 
 // tremor viene en base64: un byte (0..100) por celda
 function decode(tile: Tile): LoadedTile {
@@ -72,6 +88,7 @@ export class TileStore {
     this.fileId = fileId;
     this.tileSize = tileSize;
     this.onChange = onChange;
+    liveStores.add(this);
   }
 
   // Dígito, temblor y caja de una celda global (r, c). null si su bloque no está cargado.
@@ -183,6 +200,7 @@ export class TileStore {
   abortAll(): void {
     for (const [key, flight] of this.inFlight) this.cancel(key, flight);
     window.clearTimeout(this.retryTimer);
+    liveStores.delete(this);
   }
 
   // Programa un nuevo sync() cuando termine la espera (se queda con la espera más corta)
