@@ -8,7 +8,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 // Marco de las páginas privadas: barra superior + contenido
 export function Layout() {
-  const { me, logout } = useAuth();
+  const { me, logout, can } = useAuth();
   const location = useLocation();
 
   return (
@@ -16,9 +16,16 @@ export function Layout() {
       <header className="flex items-center gap-4 px-4 py-2 border-b border-slate-800 bg-slate-900">
         <span className="font-bold text-teal-300">Lumon MDR</span>
         <nav aria-label="Principal" className="flex gap-1">
-          <NavLink to="/files" className={linkClass}>
-            Archivos
-          </NavLink>
+          {can("files:read") && (
+            <NavLink to="/files" className={linkClass}>
+              Archivos
+            </NavLink>
+          )}
+          {can("refiners:read") && (
+            <NavLink to="/refiners" className={linkClass}>
+              Expedientes
+            </NavLink>
+          )}
           <NavLink to="/estado" className={linkClass}>
             Estado
           </NavLink>

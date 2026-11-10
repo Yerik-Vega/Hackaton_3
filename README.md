@@ -1,3 +1,37 @@
+# Entrega — Cuadrilla DiezyNueve (TEAM-057)
+
+| Integrante | Código |
+|:--|:--|
+| Treicy Calsina | 202520007 |
+| Mathias Alonso | 202210384 |
+| Yerik Vega | 202520144 |
+
+**Producción:** https://hackaton-3-beryl.vercel.app
+
+## Cómo ejecutar
+
+```bash
+npm install
+cp .env.example .env   # completar VITE_API_BASE_URL y VITE_WS_BASE_URL
+npm run dev            # http://localhost:5173
+npm run build          # build de producción (tsc estricto + vite)
+```
+
+## Despliegue
+
+- Vercel importa este repositorio y despliega cada push a `main` (preset Vite, salida `dist`).
+- Variables de entorno en Vercel: `VITE_API_BASE_URL` y `VITE_WS_BASE_URL`.
+- `X-Lumon-Build` se inyecta en build desde `VERCEL_GIT_COMMIT_SHA` (7 caracteres); en local vale `dev`.
+- `vercel.json`: rewrite SPA (las rutas profundas funcionan al recargar) y cabeceras `Content-Security-Policy`,
+  `X-Content-Type-Options: nosniff` y `Referrer-Policy`.
+- Dominio verificado con `public/.well-known/lumon-verification.txt` (challenge/verify desde `/estado`).
+
+## Storage
+
+Todavía no configurado (CP4 pendiente). Se usaría Cloudinary con un upload preset unsigned limitado a `lumon/TEAM-057/` y solo WebP.
+
+---
+
 # Hackathon Frontend: Lumon Industries — Macrodata Refinement
 
 <div align="center">

@@ -1,6 +1,6 @@
 {
   "teamCode": "TEAM-057",
-  "teamName": "Nombre de la cuadrilla",
+  "teamName": "DiezyNueve",
   "deployUrl": "https://hackaton-3-beryl.vercel.app",
   "storageProvider": "SUPABASE | CLOUDINARY",
   "integrantes": [
