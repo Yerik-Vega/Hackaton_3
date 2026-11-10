@@ -155,6 +155,18 @@ y la respuesta de la 2 llega después de la de la 3. ¿Cómo se evita que la 2 p
 
 ✅ **b**.
 
+**3.6a** Cancelas con `AbortController` la request de un bloque que salió de la vista. ¿Qué pasa en el servidor?
+- a) Se detiene al instante  b) Puede seguir procesándola: si pides el mismo bloque enseguida, quedan DOS en vuelo
+- c) Devuelve 499 siempre  d) Borra el bloque
+
+✅ **b**. Abortar solo cancela del lado del navegador. Por eso esperamos un "enfriamiento" antes de volver a pedir ese bloque.
+
+**3.6b** Llega `429` con `Retry-After: 3` mientras otros bloques están en cola. ¿Qué es correcto?
+- a) Pedir los demás bloques igual  b) No pedir NINGÚN bloque hasta que pasen 3 s (el límite es por sesión)
+- c) Reintentar ese mismo bloque cada 100 ms  d) Cerrar sesión
+
+✅ **b**.
+
 **3.6** ¿Qué significa `503` con `Retry-After`?
 - a) No autorizado  b) Servicio no disponible temporalmente: reintentar después
 - c) No encontrado  d) Conflicto
