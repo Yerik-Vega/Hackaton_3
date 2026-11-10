@@ -15,6 +15,8 @@ const RefinePage = lazy(() => import("./pages/RefinePage"));
 const EstadoPage = lazy(() => import("./pages/EstadoPage"));
 const RefinersPage = lazy(() => import("./pages/RefinersPage"));
 const BadgePage = lazy(() => import("./pages/BadgePage"));
+const IncidentsPage = lazy(() => import("./pages/IncidentsPage"));
+const IncidentNewPage = lazy(() => import("./pages/IncidentsPage").then((m) => ({ default: m.IncidentNewPage })));
 
 export default function App() {
   return (
@@ -57,6 +59,22 @@ export default function App() {
                 element={
                   <RequirePermission permission="media:upload">
                     <BadgePage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/incidents"
+                element={
+                  <RequirePermission permission="incidents:read">
+                    <IncidentsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/incidents/new"
+                element={
+                  <RequirePermission permission="incidents:create">
+                    <IncidentNewPage />
                   </RequirePermission>
                 }
               />

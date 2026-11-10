@@ -26,6 +26,11 @@ export function Layout() {
               Expedientes
             </NavLink>
           )}
+          {can("incidents:read") && (
+            <NavLink to="/incidents" className={linkClass}>
+              Incidencias
+            </NavLink>
+          )}
           <NavLink to="/estado" className={linkClass}>
             Estado
           </NavLink>
