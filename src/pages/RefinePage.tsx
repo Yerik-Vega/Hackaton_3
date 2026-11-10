@@ -135,6 +135,8 @@ function RefineView({ fileId }: { fileId: number }) {
     if (!canRefine) return setMessage("Tu rol no tiene permiso para refinar.");
     if (group.noise) return setMessage("Ese grupo es ruido: no se puede refinar.");
     if (group.refined) return setMessage("Ese grupo ya está refinado.");
+    // Protección: una caja distinta de la que dicen las reglas suma un error (WRONG_BIN) en Lumon
+    if (group.bin && bin !== group.bin && !window.confirm(`Según las reglas este grupo va a ${group.bin}. ¿Llevarlo igual a ${bin}? Si es incorrecto, Lumon suma un error.`)) return;
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -313,6 +315,9 @@ function RefineView({ fileId }: { fileId: number }) {
                 }`}
               >
                 <span className="font-bold">{bin}</span> <span className="text-xs text-slate-400">(tecla {i + 1})</span>
+                {selection?.bin === bin && !selection.noise && !selection.refined && (
+                  <span className="block text-xs text-teal-300">✓ sugerida</span>
+                )}
                 <progress className="w-full" value={file.progress[bin]} max={1} aria-label={`Progreso de ${bin}`} />
                 <span className="text-xs">{Math.round(file.progress[bin] * 100)} %</span>
               </button>
