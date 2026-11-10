@@ -32,6 +32,14 @@ const BIN_LETTER: Record<Bin, string> = { WO: "W", FC: "F", DR: "D", MA: "M" };
 
 const tileKey = (tileRow: number, tileCol: number) => `${tileRow}:${tileCol}`;
 
+// --- Estado compartido por TODA la sesión (aunque se cambie de archivo o se vuelva a entrar) ---
+// 429: el límite es por sesión, así que la espera de Retry-After también.
+let blockedUntil = 0;
+// Un bloque cancelado en el navegador puede seguir "en vuelo" en el servidor (latencia del caos).
+// Para no tener NUNCA dos requests en vuelo del mismo bloque, no se vuelve a pedir hasta que pase este tiempo.
+const ABORT_COOLDOWN_MS = 5000;
+const recentlyAborted = new Map<string, number>(); // "fileId:tr:tc" -> hora en que se canceló
+
 // tremor viene en base64: un byte (0..100) por celda
 function decode(tile: Tile): LoadedTile {
   const raw = atob(tile.tremor);
@@ -56,8 +64,8 @@ export class TileStore {
   private tiles = new Map<string, LoadedTile>();
   private inFlight = new Map<string, InFlight>();
   private pinned = new Set<string>(); // bloques que necesita el BFS: no se cancelan
-  private blockedUntil = 0; // por 429: no pedir nada antes de esta hora
   private retryTimer: number | undefined;
+  private retryAt = 0;
   private onChange: () => void;
 
   constructor(fileId: number, tileSize: number, onChange: () => void) {
@@ -74,13 +82,31 @@ export class TileStore {
     return { digit: tile.values.charCodeAt(i) - 48, tremor: tile.tremor[i], bin: tile.bins[i] };
   }
 
-  // Llamado por la grilla con los bloques visibles: pide los que faltan y cancela los que ya no se ven.
+  // Llamado por la grilla con los bloques visibles: pide los que faltan y cancela los que
+  // quedaron lejos de la vista (a más de un bloque de distancia).
   sync(needed: Array<[number, number]>): void {
-    const keys = new Set(needed.map(([tr, tc]) => tileKey(tr, tc)));
+    if (needed.length === 0) return;
+    const minTr = Math.min(...needed.map(([tr]) => tr)) - 1;
+    const maxTr = Math.max(...needed.map(([tr]) => tr)) + 1;
+    const minTc = Math.min(...needed.map(([, tc]) => tc)) - 1;
+    const maxTc = Math.max(...needed.map(([, tc]) => tc)) + 1;
     for (const [key, flight] of this.inFlight) {
-      if (!keys.has(key) && !this.pinned.has(key)) flight.controller.abort();
+      const [tr, tc] = key.split(":").map(Number);
+      const near = tr >= minTr && tr <= maxTr && tc >= minTc && tc <= maxTc;
+      if (!near && !this.pinned.has(key)) this.cancel(key, flight);
     }
     for (const [tr, tc] of needed) void this.load(tr, tc);
+  }
+
+  // Cuánto falta para poder pedir este bloque (por 429 o porque se canceló hace poco)
+  private waitTime(key: string): number {
+    const abortedAt = recentlyAborted.get(`${this.fileId}:${key}`) ?? 0;
+    return Math.max(blockedUntil - Date.now(), abortedAt + ABORT_COOLDOWN_MS - Date.now(), 0);
+  }
+
+  private cancel(key: string, flight: InFlight): void {
+    flight.controller.abort();
+    recentlyAborted.set(`${this.fileId}:${key}`, Date.now());
   }
 
   load(tileRow: number, tileCol: number): Promise<void> {
@@ -89,16 +115,19 @@ export class TileStore {
     const existing = this.inFlight.get(key);
     if (existing && !existing.controller.signal.aborted) return existing.promise; // ya está en vuelo
 
-    const wait = this.blockedUntil - Date.now();
+    const wait = this.waitTime(key);
     if (wait > 0) {
-      this.scheduleRetry(wait); // 429 activo: esperar Retry-After
+      this.scheduleRetry(wait); // esperar Retry-After o el enfriamiento tras cancelar
       return Promise.resolve();
     }
 
     const controller = new AbortController();
     const entry: InFlight = { controller, promise: Promise.resolve() };
     this.requested++;
-    entry.promise = request<Tile>(`/files/${this.fileId}/tiles/${tileRow}/${tileCol}`, { signal: controller.signal })
+    entry.promise = request<Tile>(`/files/${this.fileId}/tiles/${tileRow}/${tileCol}`, {
+      signal: controller.signal,
+      retryNetworkErrors: false, // el servidor podría seguir procesándolo: no duplicar
+    })
       .then((tile) => {
         const old = this.tiles.get(key);
         if (old && old.version > tile.version) return; // una respuesta vieja no pisa a una nueva
@@ -107,10 +136,13 @@ export class TileStore {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 429) {
-          this.blockedUntil = Date.now() + (error.retryAfter ?? 1) * 1000;
-          this.scheduleRetry(this.blockedUntil - Date.now());
+          blockedUntil = Date.now() + (error.retryAfter ?? 1) * 1000;
+          this.scheduleRetry(blockedUntil - Date.now());
+        } else if (!controller.signal.aborted) {
+          // corte de red u otro error: reintentar después del enfriamiento (sin duplicar en vuelo)
+          recentlyAborted.set(`${this.fileId}:${key}`, Date.now());
+          this.scheduleRetry(ABORT_COOLDOWN_MS);
         }
-        // abortado u otro error: se vuelve a pedir cuando haga falta
       })
       .finally(() => {
         if (this.inFlight.get(key) === entry) this.inFlight.delete(key);
@@ -125,7 +157,7 @@ export class TileStore {
     this.pinned.add(key);
     try {
       for (let i = 0; i < 8 && !this.tiles.has(key); i++) {
-        const wait = this.blockedUntil - Date.now();
+        const wait = this.waitTime(key);
         if (wait > 0) await sleep(wait + 50);
         await this.load(tileRow, tileCol);
       }
@@ -149,12 +181,16 @@ export class TileStore {
   }
 
   abortAll(): void {
-    for (const flight of this.inFlight.values()) flight.controller.abort();
+    for (const [key, flight] of this.inFlight) this.cancel(key, flight);
     window.clearTimeout(this.retryTimer);
   }
 
+  // Programa un nuevo sync() cuando termine la espera (se queda con la espera más corta)
   private scheduleRetry(ms: number): void {
-    if (this.retryTimer !== undefined) return;
+    const at = Date.now() + ms + 50;
+    if (this.retryTimer !== undefined && this.retryAt <= at) return;
+    window.clearTimeout(this.retryTimer);
+    this.retryAt = at;
     this.retryTimer = window.setTimeout(() => {
       this.retryTimer = undefined;
       this.onChange(); // la grilla vuelve a llamar a sync()

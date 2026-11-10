@@ -117,6 +117,7 @@ export interface RequestOptions {
   signal?: AbortSignal;
   auth?: boolean; // false en login/register/health
   retries?: number; // reintentos ante 503 / red (por defecto 3 en GET, 0 en el resto)
+  retryNetworkErrors?: boolean; // false: un corte de red no se reintenta aquí (lo decide quien llama)
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -141,7 +142,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       });
     } catch (networkError) {
       if (signal?.aborted) throw networkError; // se canceló a propósito
-      if (attempt < maxRetries) {
+      if (attempt < maxRetries && options.retryNetworkErrors !== false) {
         await sleep(backoffMs(attempt++), signal);
         continue;
       }
